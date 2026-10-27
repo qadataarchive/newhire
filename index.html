@@ -11,7 +11,6 @@
         .form-group { margin-bottom: 18px; }
         label { display: block; font-weight: bold; margin-bottom: 6px; font-size: 14px; color: #222; }
         
-        /* 모바일에서 입력 폼 글씨 크기 16px 이상으로 설정하여 자동 줌 방지 및 터치 개선 */
         input, select { width: 100%; padding: 12px; box-sizing: border-box; border: 1px solid #ccc; border-radius: 6px; font-size: 16px; background: #fff; }
         
         .date-container { display: flex; align-items: center; gap: 8px; }
@@ -19,7 +18,6 @@
         .checkbox-label { font-weight: normal; display: flex; align-items: center; gap: 5px; width: auto; cursor: pointer; font-size: 14px; white-space: nowrap; }
         .checkbox-label input { width: 18px; height: 18px; }
         
-        /* [개선] 서명 영역 레이아웃: 기본 세로 정렬(모바일 우선) */
         .canvas-container { 
             display: flex; 
             flex-direction: column; 
@@ -47,7 +45,7 @@
             border: 1px solid #ccc; 
             background: #fff; 
             width: 100%; 
-            height: 130px; /* 모바일에서 서명하기 편하게 높이 확대 */
+            height: 130px; 
             touch-action: none; 
             border-radius: 4px;
         }
@@ -64,7 +62,6 @@
         }
         .sign-box button:hover { background: #555 !important; }
         
-        /* 안내 박스 스타일 */
         .notice-box { background-color: #fff8e1; border: 1px solid #ffe0b2; padding: 12px; border-radius: 6px; margin-bottom: 20px; }
         .notice-box h3 { margin-top: 0; color: #e65100; font-size: 15px; margin-bottom: 8px; }
         .notice-box ul { margin: 0; padding-left: 18px; font-size: 13px; color: #333; line-height: 1.5; }
@@ -74,7 +71,6 @@
         #submitBtn:hover { background: #45a049; }
         .note { font-size: 12px; color: #e65100; margin-top: 4px; }
 
-        /* PC 화면(768px 이상)에서는 서명 칸을 가로로 배치 */
         @media (min-width: 768px) {
             body { margin: 20px; }
             .container { padding: 25px; }
@@ -225,9 +221,22 @@
         let painting = false;
 
         function resizeCanvas() {
+            // 크기 변경 시 기존 그려진 서명이 지워지지 않도록 임시 캔버스에 백업
+            const tempCanvas = document.createElement('canvas');
+            tempCanvas.width = canvas.width;
+            tempCanvas.height = canvas.height;
+            const tempCtx = tempCanvas.getContext('2d');
+            tempCtx.drawImage(canvas, 0, 0);
+
             const rect = canvas.getBoundingClientRect();
+            // 가로 또는 세로 크기가 0일 때 방지
+            if (rect.width === 0 || rect.height === 0) return;
+            
             canvas.width = rect.width;
             canvas.height = rect.height;
+
+            // 백업해둔 서명 복원
+            ctx.drawImage(tempCanvas, 0, 0, tempCanvas.width, tempCanvas.height, 0, 0, canvas.width, canvas.height);
         }
         
         resizeCanvas();
@@ -278,7 +287,7 @@
             const reader = new FileReader();
             reader.readAsDataURL(file);
             reader.onload = () => resolve(reader.result);
-            reader.error = error => reject(error);
+            reader.onerror = error => reject(error); // 수정: error -> onerror로 변경
         });
     }
 
@@ -326,7 +335,7 @@
         try {
             await fetch(WEB_APP_URL, {
                 method: "POST",
-                    mode: "no-cors",
+                mode: "no-cors",
                 headers: { "Content-Type": "text/plain;charset=utf-8" },
                 body: JSON.stringify(formData)
             });
