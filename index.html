@@ -15,6 +15,17 @@
         
         .date-container { display: flex; align-items: center; gap: 8px; }
         .date-container input[type="date"] { flex: 1; }
+        
+        /* 생년월일 3분할 입력 스타일 */
+        .birth-container { display: flex; gap: 8px; align-items: center; }
+        .birth-container input { text-align: center; }
+        .birth-container span { color: #666; font-weight: bold; }
+
+        /* 상의 사이즈 버튼 스타일 */
+        .size-btn-group { display: flex; gap: 5px; flex-wrap: wrap; }
+        .size-btn { flex: 1; min-width: 45px; padding: 10px 5px; border: 1px solid #ccc; background: #fff; border-radius: 4px; cursor: pointer; font-size: 14px; font-weight: bold; text-align: center; }
+        .size-btn.active { background: #333; color: #fff; border-color: #333; }
+
         .checkbox-label { font-weight: normal; display: flex; align-items: center; gap: 5px; width: auto; cursor: pointer; font-size: 14px; white-space: nowrap; }
         .checkbox-label input { width: 18px; height: 18px; }
         
@@ -125,6 +136,18 @@
         </div>
 
         <div class="form-group">
+            <label>생년월일</label>
+            <div class="birth-container">
+                <input type="text" name="birthYear" placeholder="YYYY" maxlength="4" oninput="formatBirth(this, 4)" required style="flex: 2;">
+                <span>/</span>
+                <input type="text" name="birthMonth" placeholder="MM" maxlength="2" oninput="formatBirth(this, 2)" required style="flex: 1;">
+                <span>/</span>
+                <input type="text" name="birthDay" placeholder="DD" maxlength="2" oninput="formatBirth(this, 2)" required style="flex: 1;">
+            </div>
+            <div class="note">* 예시: 1995 / 05 / 20 형식으로 입력해 주세요.</div>
+        </div>
+
+        <div class="form-group">
             <label>이름 (영문)</label>
             <input type="text" name="nameEn" placeholder="HONG GILDONG" required>
         </div>
@@ -177,9 +200,24 @@
             <label>안전화 사이즈</label>
             <input type="text" name="safetyShoe" placeholder="EX: 270" required>
         </div>
+
         <div class="form-group">
-            <label>근무복 사이즈(상의 S/M/L/XL/XXL, 하의 inch 숫자 작성)</label>
-            <input type="text" name="uniformSize" placeholder="EX: XL 30" required>
+            <label>근무복 상의 사이즈</label>
+            <div class="size-btn-group" id="topSizeGroup">
+                <button type="button" class="size-btn" onclick="selectSize(this, 'XS')">XS</button>
+                <button type="button" class="size-btn" onclick="selectSize(this, 'S')">S</button>
+                <button type="button" class="size-btn" onclick="selectSize(this, 'M')">M</button>
+                <button type="button" class="size-btn active" onclick="selectSize(this, 'L')">L</button>
+                <button type="button" class="size-btn" onclick="selectSize(this, 'XL')">XL</button>
+                <button type="button" class="size-btn" onclick="selectSize(this, 'XXL')">XXL</button>
+                <button type="button" class="size-btn" onclick="selectSize(this, 'XXXL')">XXXL</button>
+            </div>
+            <input type="hidden" name="uniformTopSize" id="uniformTopSize" value="L" required>
+        </div>
+
+        <div class="form-group">
+            <label>근무복 하의 사이즈 (inch 숫자 작성)</label>
+            <input type="text" name="uniformBottomSize" placeholder="EX: 30 (숫자만 입력)" required>
         </div>
 
         <div class="notice-box">
@@ -205,6 +243,24 @@
         } else {
             input.disabled = false;
         }
+    }
+
+    function formatBirth(input, maxLength) {
+        let val = input.value.replace(/[^0-9]/g, '');
+        if (val.length > maxLength) {
+            val = val.slice(0, maxLength);
+        }
+        input.value = val;
+    }
+
+    function selectSize(btn, size) {
+        const group = document.getElementById('topSizeGroup');
+        const buttons = group.getElementsByClassName('size-btn');
+        for (let b of buttons) {
+            b.classList.remove('active');
+        }
+        btn.classList.add('active');
+        document.getElementById('uniformTopSize').value = size;
     }
 
     function formatPhone(input) {
@@ -309,7 +365,7 @@
                     const canvas = document.createElement('canvas');
                     let width = img.width;
                     let height = img.height;
-                    const maxDimension = 1000; // 해상도 제한 상향 (500KB 최적화 대응)
+                    const maxDimension = 1000; 
                     if (width > height && width > maxDimension) {
                         height = Math.round((height * maxDimension) / width);
                         width = maxDimension;
@@ -378,6 +434,7 @@
             hireDate: document.getElementById('hireDateUnknown').checked ? "모름" : form.hireDate.value,
             appointDate: document.getElementById('appointDateUnknown').checked ? "모름" : form.appointDate.value,
             nameKo: form.nameKo.value,
+            birthDate: `${form.birthYear.value}-${form.birthMonth.value}-${form.birthDay.value}`,
             nameEn: form.nameEn.value,
             phone: form.phone.value,
             connName1: form.connName1.value,
@@ -388,7 +445,8 @@
             sign3: sign3,
             selectedSign: form.selectedSign.value,
             safetyShoe: form.safetyShoe.value,
-            uniformSize: form.uniformSize.value
+            uniformTopSize: form.uniformTopSize.value,
+            uniformBottomSize: form.uniformBottomSize.value
         };
 
         const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbx437pPN2lftPMyXofg4JI3vdcL29y0q-kgR65qtoxZ9JfLnOHxUe7Sl5xnfny7A_Fn/exec";
