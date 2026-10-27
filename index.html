@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>정보 및 서명 등록 폼</title>
+    <style>
+        body { font-family: 'Malgun Gothic', sans-serif; margin: 20px; background-color: #f9f9f9; }
+        .container { max-width: 650px; background: #fff; padding: 25px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); margin: auto; }
+        h2 { border-bottom: 2px solid #333; padding-bottom: 10px; }
+        .form-group { margin-bottom: 15px; }
+        label { display: block; font-weight: bold; margin-bottom: 5px; }
+        input, select { width: 100%; padding: 8px; box-sizing: border-box; border: 1px solid #ccc; border-radius: 4px; }
+        .date-container { display: flex; align-items: center; gap: 10px; }
+        .date-container input[type="date"] { flex: 1; }
+        .checkbox-label { font-weight: normal; display: flex; align-items: center; gap: 5px; width: auto; cursor: pointer; }
+        .checkbox-label input { width: auto; }
+        
+        /* 서명 영역 레이아웃 정렬 수정 */
+        .canvas-container { 
+            display: flex; 
+            gap: 10px; 
+            justify-content: space-between; 
+            margin-top: 10px; 
+            align-items: stretch; 
+        }
+        .sign-box { 
+            border: 1px solid #ddd; 
+            padding: 10px; 
+            text-align: center; 
+            background: #fafafa; 
+            border-radius: 4px; 
+            flex: 1; 
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between; 
+        }
+        .sign-box span {
+            font-weight: bold;
+            font-size: 13px;
+            color: #333;
+            margin-bottom: 5px;
+            display: block;
+        }
+        canvas { 
+            border: 1px solid #ccc; 
+            background: #fff; 
+            width: 100%; 
+            height: 90px; 
+            touch-action: none; 
+            border-radius: 3px;
+        }
+        .sign-box button {
+            margin-top: 8px !important;
+            padding: 4px !important;
+            font-size: 12px !important;
+            background: #777 !important;
+            width: 100% !important;
+            border: none;
+            color: white;
+            border-radius: 3px;
+            cursor: pointer;
+        }
+        .sign-box button:hover { background: #555 !important; }
+        
+        /* 안내 박스 스타일 */
+        .notice-box { background-color: #fff8e1; border: 1px solid #ffe0b2; padding: 15px; border-radius: 6px; margin-bottom: 20px; }
+        .notice-box h3 { margin-top: 0; color: #e65100; font-size: 16px; margin-bottom: 8px; }
+        .notice-box ul { margin: 0; padding-left: 20px; font-size: 14px; color: #333; line-height: 1.6; }
+        .notice-box .warning { color: #d32f2f; font-weight: bold; margin-top: 8px; display: block; }
+
+        #submitBtn { background: #4CAF50; color: white; padding: 12px 20px; border: none; border-radius: 4px; cursor: pointer; width: 100%; font-size: 16px; font-weight: bold; margin-top: 20px; }
+        #submitBtn:hover { background: #45a049; }
+        .note { font-size: 12px; color: #e65100; margin-top: 3px; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2>사내 정보 및 서명 등록</h2>
+    <form id="infoForm" onsubmit="handleSubmit(event)">
+        
+        <div class="form-group">
+            <label>소속</label>
+            <select name="department" required>
+                <option value="품질보증부">1. 품질보증부</option>
+                <option value="품질보증부 QC팀 QC파트" selected>2. 품질보증부 QC팀 QC파트</option>
+            </select>
+        </div>
+
+        <div class="form-group">
+            <label>입사일자</label>
+            <div class="date-container">
+                <input type="date" name="hireDate" id="hireDateInput" required>
+                <label class="checkbox-label"><input type="checkbox" id="hireDateUnknown" onchange="toggleDate('hireDateInput', this)"> 모름</label>
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label>발령일자</label>
+            <div class="date-container">
+                <input type="date" name="appointDate" id="appointDateInput" required>
+                <label class="checkbox-label"><input type="checkbox" id="appointDateUnknown" onchange="toggleDate('appointDateInput', this)"> 모름</label>
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label>이름 (한글)</label>
+            <input type="text" name="nameKo" placeholder="홍길동" required>
+        </div>
+
+        <div class="form-group">
+            <label>이름 (영문)</label>
+            <input type="text" name="nameEn" placeholder="HONG GILDONG" required>
+        </div>
+
+        <div class="form-group">
+            <label>휴대폰 번호 (- 없이 숫자만 입력)</label>
+            <!-- 11자리 입력 제한 버그 수정 완료 -->
+            <input type="tel" name="phone" id="phoneInput" placeholder="01012345678" oninput="formatPhone(this)" required>
+            <div class="note">* 자동으로 000-0000-0000 형식으로 변환됩니다.</div>
+        </div>
+
+        <div class="form-group">
+            <label>접속명 1</label>
+            <input type="text" name="connName1" placeholder="EX: GDHONG (홍길동의 경우)">
+        </div>
+
+        <div class="form-group">
+            <label>접속명 2</label>
+            <input type="text" name="connName2" placeholder="EX: GDH (홍길동의 경우)">
+        </div>
+
+        <div class="form-group">
+            <label>증명사진 업로드</label>
+            <input type="file" id="photoFile" accept="image/*" required>
+        </div>
+
+        <div class="form-group">
+            <label>서명 등록 (3개 모두 등록 필수)</label>
+            <div class="note">⚠️ 1, 2, 3번 서명 모두 직접 그려서 등록해 주세요. (제출 시 1번 서명이 기본 선택됩니다)</div>
+            <div class="canvas-container">
+                <div class="sign-box">
+                    <span>서명 1 (선택됨)</span>
+                    <canvas id="canvas1"></canvas>
+                    <button type="button" onclick="clearCanvas(1)">지우기</button>
+                </div>
+                <div class="sign-box">
+                    <span>서명 2</span>
+                    <canvas id="canvas2"></canvas>
+                    <button type="button" onclick="clearCanvas(2)">지우기</button>
+                </div>
+                <div class="sign-box">
+                    <span>서명 3</span>
+                    <canvas id="canvas3"></canvas>
+                    <button type="button" onclick="clearCanvas(3)">지우기</button>
+                </div>
+            </div>
+            <!-- 선택은 1번으로 고정 -->
+            <input type="hidden" name="selectedSign" value="1">
+        </div>
+
+        <!-- 추가 선택 항목 -->
+        <div class="form-group">
+            <label>안전화 사이즈</label>
+            <input type="text" name="safetyShoe" placeholder="EX: 270">
+        </div>
+        <div class="form-group">
+            <label>근무복 사이즈</label>
+            <input type="text" name="uniformSize" placeholder="EX: 105">
+        </div>
+
+        <!-- 제출 전 안내 사항 -->
+        <div class="notice-box">
+            <h3>📌 안내 사항</h3>
+            <ul>
+                <li>안전화 및 근무복 지급 시기: ASAP</li>
+                <li>WIVI 아이디 생성 시기: 입사 약 일주일 후</li>
+                <li>인트라넷 및 ERP 아이디 생성 시기: 입사 한달 후</li>
+            </ul>
+            <span class="warning">※ 잘못 제출한 경우 한 시간 내 다시 제출해 주세요. (가장 최근 내용으로 처리)</span>
+        </div>
+
+        <button type="submit" id="submitBtn">제출하기</button>
+    </form>
+</div>
+
+<script>
+    // '모름' 체크박스 기능
+    function toggleDate(inputId, checkbox) {
+        const input = document.getElementById(inputId);
+        if (checkbox.checked) {
+            input.value = "";
+            input.disabled = true;
+        } else {
+            input.disabled = false;
+        }
+    }
+
+    // 휴대폰 번호 11자리 제한 해제 및 자동 하이픈 포맷팅
+    function formatPhone(input) {
+        let val = input.value.replace(/[^0-9]/g, '');
+        if (val.length > 11) {
+            val = val.slice(0, 11);
+        }
+        if (val.length > 3 && val.length <= 7) {
+            val = val.slice(0, 3) + '-' + val.slice(3);
+        } else if (val.length > 7) {
+            val = val.slice(0, 3) + '-' + val.slice(3, 7) + '-' + val.slice(7, 11);
+        }
+        input.value = val;
+    }
+
+    // Canvas 서명 칸 전체 드로잉 및 해상도 최적화 로직
+    const canvases = [1, 2, 3].map(id => {
+        const canvas = document.getElementById('canvas' + id);
+        const ctx = canvas.getContext('2d');
+        let painting = false;
+
+        function resizeCanvas() {
+            const rect = canvas.getBoundingClientRect();
+            canvas.width = rect.width;
+            canvas.height = rect.height;
+        }
+        
+        resizeCanvas();
+        window.addEventListener('resize', resizeCanvas);
+
+        function startPosition(e) { painting = true; draw(e); }
+        function finishedPosition() { painting = false; ctx.beginPath(); }
+        
+        function draw(e) {
+            if (!painting) return;
+            ctx.lineWidth = 2.5;
+            ctx.lineCap = 'round';
+            ctx.lineJoin = 'round';
+            ctx.strokeStyle = 'black';
+
+            const rect = canvas.getBoundingClientRect();
+            const clientX = e.clientX || (e.touches && e.touches[0] ? e.touches[0].clientX : 0);
+            const clientY = e.clientY || (e.touches && e.touches[0] ? e.touches[0].clientY : 0);
+            
+            const x = clientX - rect.left;
+            const y = clientY - rect.top;
+
+            ctx.lineTo(x, y);
+            ctx.stroke();
+            ctx.beginPath();
+            ctx.moveTo(x, y);
+        }
+
+        canvas.addEventListener('mousedown', startPosition);
+        canvas.addEventListener('mouseup', finishedPosition);
+        canvas.addEventListener('mousemove', draw);
+        
+        canvas.addEventListener('touchstart', function(e) { e.preventDefault(); startPosition(e); });
+        canvas.addEventListener('touchend', function(e) { e.preventDefault(); finishedPosition(); });
+        canvas.addEventListener('touchmove', function(e) { e.preventDefault(); draw(e); });
+
+        return canvas;
+    });
+
+    function clearCanvas(id) {
+        const canvas = document.getElementById('canvas' + id);
+        const ctx = canvas.getContext('2d');
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+    }
+
+    // 파일(사진) Base64 변환 유틸리티
+    function getBase64(file) {
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.readAsDataURL(file);
+            reader.onload = () => resolve(reader.result);
+            reader.error = error => reject(error);
+        });
+    }
+
+    // 폼 제출 함수
+    async function handleSubmit(event) {
+        event.preventDefault();
+        const btn = document.getElementById('submitBtn');
+        btn.innerText = "제출 중입니다...";
+        btn.disabled = true;
+
+        const form = event.target;
+        
+        const hireDateVal = document.getElementById('hireDateUnknown').checked ? "모름" : form.hireDate.value;
+        const appointDateVal = document.getElementById('appointDateUnknown').checked ? "모름" : form.appointDate.value;
+
+        const photoInput = document.getElementById('photoFile');
+        let photoBase64 = "";
+        if (photoInput.files.length > 0) {
+            photoBase64 = await getBase64(photoInput.files[0]);
+        }
+
+        const sign1 = document.getElementById('canvas1').toDataURL('image/png');
+        const sign2 = document.getElementById('canvas2').toDataURL('image/png');
+        const sign3 = document.getElementById('canvas3').toDataURL('image/png');
+
+        const formData = {
+            department: form.department.value,
+            hireDate: hireDateVal,
+            appointDate: appointDateVal,
+            nameKo: form.nameKo.value,
+            nameEn: form.nameEn.value,
+            phone: form.phone.value,
+            connName1: form.connName1.value,
+            connName2: form.connName2.value,
+            photo: photoBase64,
+            sign1: sign1,
+            sign2: sign2,
+            sign3: sign3,
+            selectedSign: form.selectedSign.value,
+            safetyShoe: form.safetyShoe.value,
+            uniformSize: form.uniformSize.value
+        };
+
+        const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbx437pPN2lftPMyXofg4JI3vdcL29y0q-kgR65qtoxZ9JfLnOHxUe7Sl5xnfny7A_Fn/exec";
+
+        try {
+            await fetch(WEB_APP_URL, {
+                method: "POST",
+                mode: "no-cors",
+                headers: { "Content-Type": "text/plain;charset=utf-8" },
+                body: JSON.stringify(formData)
+            });
+
+            alert("성공적으로 제출되었습니다!");
+            form.reset();
+            [1, 2, 3].forEach(id => clearCanvas(id));
+        } catch (error) {
+            alert("제출 중 오류가 발생했습니다: " + error);
+        } finally {
+            btn.innerText = "제출하기";
+            btn.disabled = false;
+        }
+    }
+</script>
+
+</body>
+</html>
