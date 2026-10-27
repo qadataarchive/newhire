@@ -32,6 +32,7 @@
             border-radius: 6px; 
             display: flex;
             flex-direction: column;
+            align-items: center;
         }
         .sign-box span {
             font-weight: bold;
@@ -40,12 +41,15 @@
             margin-bottom: 8px;
             display: block;
             text-align: left;
+            width: 100%;
         }
+        /* 서명 칸 정사각형 비율(1:1) 고정 */
         canvas { 
             border: 1px solid #ccc; 
             background: #fff; 
             width: 100%; 
-            height: 130px; 
+            max-width: 200px; 
+            aspect-ratio: 1 / 1; 
             touch-action: none; 
             border-radius: 4px;
         }
@@ -55,6 +59,7 @@
             font-size: 14px !important;
             background: #777 !important;
             width: 100% !important;
+            max-width: 200px;
             border: none;
             color: white;
             border-radius: 4px;
@@ -69,6 +74,7 @@
 
         #submitBtn { background: #4CAF50; color: white; padding: 14px 20px; border: none; border-radius: 6px; cursor: pointer; width: 100%; font-size: 17px; font-weight: bold; margin-top: 10px; }
         #submitBtn:hover { background: #45a049; }
+
         .note { font-size: 12px; color: #e65100; margin-top: 4px; }
 
         @media (min-width: 768px) {
@@ -80,7 +86,6 @@
                 justify-content: space-between; 
             }
             .sign-box { flex: 1; }
-            canvas { height: 100px; }
         }
     </style>
 </head>
@@ -141,12 +146,12 @@
         </div>
 
         <div class="form-group">
-            <label>증명사진 업로드</label>
+            <label>증명사진 업로드 (자동 500KB 이하 최적화)</label>
             <input type="file" id="photoFile" accept="image/*" required>
         </div>
 
         <div class="form-group">
-            <label>서명 등록 (3개 모두 등록 필수)</label>
+            <label>서명 등록 (3개 모두 등록 필수 - 정사각형)</label>
             <div class="note">⚠️ 1, 2, 3번 서명 모두 직접 그려서 등록해 주세요. (제출 시 1번 서명이 기본 선택됩니다)</div>
             <div class="canvas-container">
                 <div class="sign-box">
@@ -170,11 +175,11 @@
 
         <div class="form-group">
             <label>안전화 사이즈</label>
-            <input type="text" name="safetyShoe" placeholder="EX: 270">
+            <input type="text" name="safetyShoe" placeholder="EX: 270" required>
         </div>
         <div class="form-group">
             <label>근무복 사이즈</label>
-            <input type="text" name="uniformSize" placeholder="EX: 105">
+            <input type="text" name="uniformSize" placeholder="EX: 105" required>
         </div>
 
         <div class="notice-box">
@@ -221,7 +226,6 @@
         let painting = false;
 
         function resizeCanvas() {
-            // 크기 변경 시 기존 그려진 서명이 지워지지 않도록 임시 캔버스에 백업
             const tempCanvas = document.createElement('canvas');
             tempCanvas.width = canvas.width;
             tempCanvas.height = canvas.height;
@@ -229,14 +233,15 @@
             tempCtx.drawImage(canvas, 0, 0);
 
             const rect = canvas.getBoundingClientRect();
-            // 가로 또는 세로 크기가 0일 때 방지
             if (rect.width === 0 || rect.height === 0) return;
             
-            canvas.width = rect.width;
-            canvas.height = rect.height;
+            const size = rect.width;
+            canvas.width = size;
+            canvas.height = size;
 
-            // 백업해둔 서명 복원
-            ctx.drawImage(tempCanvas, 0, 0, tempCanvas.width, tempCanvas.height, 0, 0, canvas.width, canvas.height);
+            ctx.fillStyle = "white";
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            ctx.drawImage(tempCanvas, 0, 0, tempCanvas.width, tempCanvas.height, 0, 0, size, size);
         }
         
         resizeCanvas();
@@ -256,8 +261,8 @@
             const clientX = e.clientX || (e.touches && e.touches[0] ? e.touches[0].clientX : 0);
             const clientY = e.clientY || (e.touches && e.touches[0] ? e.touches[0].clientY : 0);
             
-            const x = clientX - rect.left;
-            const y = clientY - rect.top;
+            const x = (clientX - rect.left) * (canvas.width / rect.width);
+            const y = (clientY - rect.top) * (canvas.height / rect.height);
 
             ctx.lineTo(x, y);
             ctx.stroke();
@@ -279,16 +284,75 @@
     function clearCanvas(id) {
         const canvas = document.getElementById('canvas' + id);
         const ctx = canvas.getContext('2d');
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.fillStyle = "white";
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
     }
 
-    function getBase64(file) {
+    window.addEventListener('load', () => {
+        [1, 2, 3].forEach(id => {
+            const canvas = document.getElementById('canvas' + id);
+            const ctx = canvas.getContext('2d');
+            ctx.fillStyle = "white";
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+        });
+    });
+
+    // 증명사진을 500KB 이하로 자동 압축하는 함수
+    function compressImage(file, maxSizeKB = 500) {
         return new Promise((resolve, reject) => {
             const reader = new FileReader();
             reader.readAsDataURL(file);
-            reader.onload = () => resolve(reader.result);
-            reader.onerror = error => reject(error); // 수정: error -> onerror로 변경
+            reader.onload = event => {
+                const img = new Image();
+                img.src = event.target.result;
+                img.onload = () => {
+                    const canvas = document.createElement('canvas');
+                    let width = img.width;
+                    let height = img.height;
+                    const maxDimension = 1000; // 해상도 제한 상향 (500KB 최적화 대응)
+                    if (width > height && width > maxDimension) {
+                        height = Math.round((height * maxDimension) / width);
+                        width = maxDimension;
+                    } else if (height > maxDimension) {
+                        width = Math.round((width * maxDimension) / height);
+                        height = maxDimension;
+                    }
+
+                    canvas.width = width;
+                    canvas.height = height;
+                    const ctx = canvas.getContext('2d');
+                    ctx.fillStyle = "white";
+                    ctx.fillRect(0, 0, width, height);
+                    ctx.drawImage(img, 0, 0, width, height);
+
+                    let quality = 0.9;
+                    let dataUrl = canvas.toDataURL('image/jpeg', quality);
+
+                    while ((dataUrl.length * (3/4)) / 1024 > maxSizeKB && quality > 0.1) {
+                        quality -= 0.1;
+                        dataUrl = canvas.toDataURL('image/jpeg', quality);
+                    }
+
+                    resolve(dataUrl);
+                };
+                img.onerror = error => reject(error);
+            };
+            reader.onerror = error => reject(error);
         });
+    }
+
+    function getCanvasJpegData(canvasId) {
+        const canvas = document.getElementById(canvasId);
+        const tempCanvas = document.createElement('canvas');
+        tempCanvas.width = canvas.width;
+        tempCanvas.height = canvas.height;
+        const tempCtx = tempCanvas.getContext('2d');
+        
+        tempCtx.fillStyle = "white";
+        tempCtx.fillRect(0, 0, tempCanvas.width, tempCanvas.height);
+        tempCtx.drawImage(canvas, 0, 0);
+        
+        return tempCanvas.toDataURL('image/jpeg', 0.9);
     }
 
     async function handleSubmit(event) {
@@ -299,23 +363,20 @@
 
         const form = event.target;
         
-        const hireDateVal = document.getElementById('hireDateUnknown').checked ? "모름" : form.hireDate.value;
-        const appointDateVal = document.getElementById('appointDateUnknown').checked ? "모름" : form.appointDate.value;
-
         const photoInput = document.getElementById('photoFile');
         let photoBase64 = "";
         if (photoInput.files.length > 0) {
-            photoBase64 = await getBase64(photoInput.files[0]);
+            photoBase64 = await compressImage(photoInput.files[0], 500);
         }
 
-        const sign1 = document.getElementById('canvas1').toDataURL('image/png');
-        const sign2 = document.getElementById('canvas2').toDataURL('image/png');
-        const sign3 = document.getElementById('canvas3').toDataURL('image/png');
+        const sign1 = getCanvasJpegData('canvas1');
+        const sign2 = getCanvasJpegData('canvas2');
+        const sign3 = getCanvasJpegData('canvas3');
 
         const formData = {
             department: form.department.value,
-            hireDate: hireDateVal,
-            appointDate: appointDateVal,
+            hireDate: document.getElementById('hireDateUnknown').checked ? "모름" : form.hireDate.value,
+            appointDate: document.getElementById('appointDateUnknown').checked ? "모름" : form.appointDate.value,
             nameKo: form.nameKo.value,
             nameEn: form.nameEn.value,
             phone: form.phone.value,
@@ -335,7 +396,6 @@
         try {
             await fetch(WEB_APP_URL, {
                 method: "POST",
-                mode: "no-cors",
                 headers: { "Content-Type": "text/plain;charset=utf-8" },
                 body: JSON.stringify(formData)
             });
